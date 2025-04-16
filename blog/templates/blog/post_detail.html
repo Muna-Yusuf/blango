@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% load markdownify %}
+
+{% block content %}
+<article class="post">
+    <h1>{{ post.title }}</h1>
+    <div class="meta">
+        Posted by {{ post.author }} | {{ post.published_at|date:"M d, Y" }}
+    </div>
+    <div class="content">
+        {{ post.content|markdownify }}
+    </div>
+</article>
+
+<section class="comments" id="comments">
+    <h2>Comments ({{ post.comments.count }})</h2>
+    
+    <!-- Existing Comments -->
+    {% for comment in post.comments.all %}
+    <div class="comment">
+        <div class="author">{{ comment.user }}:</div>
+        <div class="text">{{ comment.content }}</div>
+        <div class="date">{{ comment.created_at }}</div>
+    </div>
+    {% endfor %}
+
+    <!-- Real-Time Comments Container -->
+    <div id="realtime-comments"></div>
+
+    <!-- Comment Form -->
+    {% if user.is_authenticated %}
+    <form id="comment-form" method="post">
+        {% csrf_token %}
+        <textarea 
+            id="comment-content" 
+            name="content"
+            placeholder="Write your comment..."
+            required
+        ></textarea>
+        <button type="submit">Post Comment</button>
+    </form>
+    {% else %}
+    <p>Please <a href="{% url 'login' %}">login</a> to comment.</p>
+    {% endif %}
+</section>
+
+<!-- WebSocket Script -->
+<script>
+    const postId = {{ post.id }};
+    
+    // Connect to WebSocket
+    const commentSocket = new WebSocket(
+        `ws://${window.location.host}/ws/post/${postId}/comments/`
+    );
+
+    // Handle incoming messages
+    commentSocket.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        const commentsContainer = document.getElementById('realtime-comments');
+        
+        const commentDiv = document.createElement('div');
+        commentDiv.className = 'comment';
+        commentDiv.innerHTML = `
+            <div class="author">{{ request.user }}:</div>
+            <div class="text">${data.message}</div>
+            <div class="date">Just now</div>
+        `;
+        
+        commentsContainer.prepend(commentDiv);
+    };
+
+    // Handle form submission
+    document.querySelector('#comment-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const contentField = document.querySelector('#comment-content');
+        
+        // Send via WebSocket
+        commentSocket.send(JSON.stringify({
+            'message': contentField.value
+        }));
+        
+        // Send to server to save in database
+        fetch(`{% url 'post_comment' post.id %}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                'content': contentField.value
+            })
+        });
+        
+        // Clear input
+        contentField.value = '';
+    });
+</script>
+{% endblock %}

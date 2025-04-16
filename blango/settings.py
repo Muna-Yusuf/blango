@@ -136,7 +136,18 @@ class Dev(Configuration):
       'drf_yasg',
       'django_filters',
       'versatileimagefield',
+      'channels',
   ]
+  
+ASGI_APPLICATION = "blango.asgi.application"
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}
 
   # Versatile Image Field 
   # https://django-versatileimagefield.readthedocs.io/en/latest/index.html

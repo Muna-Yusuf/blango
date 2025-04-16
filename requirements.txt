@@ -52,3 +52,8 @@ typing-extensions==3.10.0.1
 urllib3==1.26.8
 wcwidth==0.1.7
 djangorestframework==3.13.1
+
+
+channels==4.0.0
+channels-redis==4.1.0
+redis==4.5.4
